@@ -7,6 +7,7 @@ load('lib/prefs');
 
 var myPrefs = prefs.createStore('extensions.scrollbar-like-scroller@piro.sakura.ne.jp.');
 myPrefs.define('debug',          false);
+myPrefs.define('areaSizeLeft',   64, 'areaSize.left');
 myPrefs.define('areaSizeRight',  64, 'areaSize.right');
 myPrefs.define('areaSizeBottom', 64, 'areaSize.buttom');
 myPrefs.define('startThreshold', 12);
@@ -44,9 +45,11 @@ function parseTouchEvent(aEvent) {
 		eventY  : Math.round(touch.clientY * contentZoom)
 	};
 	var maxXArea = viewport.width * 0.5;
+	var leftArea = Math.min(maxXArea, myPrefs.areaSizeLeft);
 	var rightArea = Math.min(maxXArea, myPrefs.areaSizeRight);
 	var maxYArea = viewport.width * 0.5;
 	var bottomArea = Math.min(maxYArea, myPrefs.areaSizeBottom);
+	parsed.leftEdgeTouching = parsed.eventX <= leftArea;
 	parsed.rightEdgeTouching = parsed.width - parsed.eventX <= rightArea;
 	parsed.bottomEdgeTouching = parsed.height - parsed.eventY <= bottomArea;
 
@@ -95,7 +98,7 @@ function handleTouchStart(aEvent) {
 	if (aEvent.touches.length != 1)
 		return;
 	var [chrome, content, parsed] = parseTouchEvent(aEvent);
-	if (!parsed.rightEdgeTouching && !parsed.bottomEdgeTouching)
+	if (!parsed.leftEdgeTouching && !parsed.rightEdgeTouching && !parsed.bottomEdgeTouching)
 		return;
 	state = STATE_READY;
 	startX = parsed.eventX;
@@ -138,7 +141,7 @@ function handleTouchMove(aEvent) {
 			return;
 		let threshold = myPrefs.startThreshold;
 		scrollXAxis = parsed.bottomEdgeTouching && Math.abs(parsed.eventX - startX) >= threshold;
-		scrollYAxis = parsed.rightEdgeTouching && Math.abs(parsed.eventY - startY) >= threshold;
+		scrollYAxis = (parsed.leftEdgeTouching || parsed.rightEdgeTouching) && Math.abs(parsed.eventY - startY) >= threshold;
 		if (!scrollXAxis && !scrollYAxis)
 			return;
 		if (myPrefs.debug)
